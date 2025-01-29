@@ -1,0 +1,224 @@
+---
+title: "Pima Indians Diabete"
+author: "Mehedi Hasan Mir"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: cerulean
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Packages
+
+Loading required packages:
+
+
+```{r}
+library(dplyr)
+library(knitr)
+library(DescTools)
+library(ggplot2)
+library(naniar)
+library(tidyr)
+```
+
+
+------------------------------------------------------------------------
+
+# Importing the Pima Indians Diabetes Data
+
+
+```{r}
+df = read.csv("Data/Kaggle - Pima Indians Diabetes Database.csv")
+head(df)
+```
+
+
+Here is what the columns in the data mean:
+
+| Column | Details |
+|--|----|
+| Pregnancies | Number of times pregnant |
+| Glucose | Plasma glucose concentration a 2 hours in an oral glucose tolerance test |
+| BloodPressure | Diastolic blood pressure (mm Hg) |
+| SkinThickness | Triceps skin fold thickness (mm) |
+| Insulin | 2-Hour serum insulin (mu U/ml) |
+| BMI | Body mass index (weight in kg/(height in m)\^2) |
+| DiabetesPedigreeFunction | Diabetes pedigree function |
+| Age | Age (years) |
+| Outcome | Class variable (0=No or 1=Yes) |
+
+------------------------------------------------------------------------
+
+
+**`Outcome` is a categorical variable, 1 means Yes, 0 means No. So, convert it into a factor data type. Then, calculating mean, standard deviation, minimum, 1st quartile, median, 3rd quartile, maximum, and inter-quartile range of all the numeric columns in the dataset.
+Here, In coloumn of Glucose, BloodPressure, SkinThickness & BMI, There are lots of 0 that is 
+meaningless. In real life O in not exist in these columns.
+
+```{r}
+df$Outcome = as.factor(df$Outcome)
+class(df$Outcome)
+calculating = function(colum){
+  colum = as.numeric(colum)
+  mean_value = mean(colum)
+  median_value = median(colum)
+  mode_value = Mode(colum)
+  min_value = min(colum)
+  standard_value = sd(colum)
+  max_value = max(colum)
+  quantile = quantile(colum)
+  first_quantile = quantile(colum, 0.25)
+  third_quantile = quantile(colum, 0.75)
+  iqr_range = IQR(colum)
+  
+  return(list(
+    mean = mean_value,
+    median = median_value,
+    mode= mode_value,
+    min = min_value,
+    max = max_value,
+    standard_deviation = standard_value,
+    quantile_ = quantile,
+    firstQuantile = first_quantile,
+    thirdQuantile = third_quantile,
+    iqrRange = iqr_range
+  ))
+}
+calculating(df$Pregnancies)
+calculating(df$Glucose)
+calculating(df$BloodPressure)
+calculating(df$SkinThickness)
+calculating(df$Insulin)
+calculating(df$BMI)
+calculating(df$DiabetesPedigreeFunction)
+calculating(df$Age)
+calculating(df$Outcome)
+```
+
+
+**Let's see how many people have Outcome = Yes?**
+
+
+```{r}
+yes_outcone = df %>% 
+  filter(Outcome == 1)
+count(yes_outcone)
+```
+
+
+**Creating histograms for all the numeric variables in the data using ggplot2.**
+
+
+```{r}
+histplot = function(colum){
+  colum = as.numeric(colum)
+  ggplot(data = df) +
+    geom_histogram(aes(x = colum, fill = Outcome, colour = "black", alpha = 0.8),
+                   bins = 20)
+}
+histplot(df$Pregnancies)
+```
+```{r}
+histplot(df$Glucose)
+```
+```{r}
+histplot(df$BloodPressure)
+```
+```{r}
+histplot(df$SkinThickness)
+```
+```{r}
+histplot(df$Insulin)
+```
+```{r}
+histplot(df$BMI)
+```
+```{r}
+histplot(df$DiabetesPedigreeFunction)
+```
+```{r}
+histplot(df$Age)
+```
+
+
+
+**Creating boxplot of Glucose, Insulin, BMI, and Age by Outcome using ggplot2.**
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = Outcome, y = Glucose))+
+   geom_boxplot()+
+  geom_jitter()
+
+```
+```{r}
+df %>% 
+  ggplot(aes(x = Outcome, y = Insulin))+
+  geom_boxplot()+
+  geom_jitter()
+  
+```
+```{r}
+df %>% 
+  ggplot(aes(x = Outcome, y = BMI))+
+  geom_boxplot()+
+  geom_jitter()
+```
+```{r}
+df %>% 
+  ggplot(aes(x = Outcome, y = Age))+
+  geom_boxplot()+
+  geom_jitter()
+```
+
+
+**Replacing 0 with NA in the variables where a value of 0 does not make sense.**
+
+
+```{r}
+null_column = colSums(is.na(df))
+zero_col = colSums(df==0)
+df$Glucose[df$Glucose == 0] = NA
+df$BloodPressure[df$BloodPressure == 0] = NA
+df$SkinThickness[df$SkinThickness == 0] = NA
+df$BMI[df$BMI == 0] = NA
+head(df)
+```
+
+
+
+**Useing naniar package to inspect number of missing values in the data after replacing 0's with NA's**
+
+
+```{r}
+miss_var_summary(df)
+gg_miss_var(df)
+vis_miss(df)
+```
+```{r}
+summary(df)
+nrow(df)
+df1 =df %>% 
+  mutate(SkinThickness = ifelse(is.na(SkinThickness), mean(SkinThickness, na.rm = TRUE), SkinThickness),
+         BloodPressure = ifelse(is.na(BloodPressure), median(BloodPressure, na.rm = TRUE), BloodPressure))
+final_df = df1 %>% 
+  drop_na(Glucose, BMI)
+miss_var_summary(final_df)
+```
+
+
+**Export the final cleaned data in an Excel file for modeling.**
+
+```{r}
+write.csv(final_df, "Output/Processed Pima Indians Diabetes.csv", row.names = F)
+```
+
+
